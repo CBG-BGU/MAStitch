@@ -1,0 +1,293 @@
+{
+  "system_name": "Instagram Marketing System",
+  "framework": "crewai",
+  "summary": {
+    "num_agents": 5,
+    "num_tasks": 6,
+    "num_crews": 2,
+    "tools_defined": 3,
+    "tools_imported": 1,
+    "tools_mcp": 0
+  },
+  "agents": {
+    "lead_market_analyst": {
+      "type": "Agent",
+      "allow_delegation": false,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Lead Market Analyst",
+      "goal": "Conduct analysis of the product and competitors to guide marketing strategy.",
+      "backstory": "As the Lead Market Analyst at a premier digital marketing firm, you specialize in dissecting online business landscapes.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    },
+    "chief_marketing_strategist": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Chief Marketing Strategist",
+      "goal": "Synthesize insights from analyses to formulate high-impact marketing strategies.",
+      "backstory": "A chief strategist known for bespoke plans that drive measurable success.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet",
+        "SearchTools.search_instagram"
+      ],
+      "verbose": true
+    },
+    "creative_content_creator": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Creative Content Creator",
+      "goal": "Craft compelling Instagram ad copy and content that resonates and converts.",
+      "backstory": "A seasoned creative who turns strategy into punchy, platform-native storytelling.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet",
+        "SearchTools.search_instagram"
+      ],
+      "verbose": true
+    },
+    "senior_photographer": {
+      "type": "Agent",
+      "allow_delegation": false,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Senior Photographer",
+      "goal": "Create striking visual concepts for Instagram ads that capture attention.",
+      "backstory": "Expert in emotionally engaging imagery for brand storytelling.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet",
+        "SearchTools.search_instagram"
+      ],
+      "verbose": true
+    },
+    "chief_creative_director": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Chief Creative Director",
+      "goal": "Review and elevate creative outputs to align with brand and campaign goals.",
+      "backstory": "Leads creative excellence, ensuring deliverables meet strategic objectives.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet",
+        "SearchTools.search_instagram"
+      ],
+      "verbose": true
+    }
+  },
+  "tasks": {
+    "product_analysis": {
+      "type": "Task",
+      "description": "Analyze the product website {product_website} with customer details {product_details}. Identify unique features, benefits, and narrative; be meticulous and up-to-date (year 2025).",
+      "agent": "lead_market_analyst",
+      "expected_output": "A clear report of key selling points, market appeal, and improvement suggestions."
+    },
+    "competitor_analysis": {
+      "type": "Task",
+      "description": "Explore competitors for {product_website} using details {product_details}. Identify top 3 competitors and analyze strategy, positioning, and perception.",
+      "agent": "lead_market_analyst",
+      "expected_output": "A report including context on {product_website} and a structured competitor comparison."
+    },
+    "campaign_development": {
+      "type": "Task",
+      "description": "Develop a targeted marketing campaign for {product_website} with details {product_details}. Provide strategy and creative content ideas to engage the target audience.",
+      "agent": "chief_marketing_strategist",
+      "expected_output": "Strategy plus creative ideas that integrate all known context about the product and customer."
+    },
+    "instagram_ad_copy": {
+      "type": "Task",
+      "description": "Craft punchy, captivating Instagram ad copy aligned with the strategy. Ensure platform-native tone and clear calls-to-action.",
+      "agent": "creative_content_creator",
+      "expected_output": "Three distinct Instagram ad copies."
+    },
+    "take_photograph_task": {
+      "type": "Task",
+      "description": "Imagine and describe three jaw-dropping Instagram photo concepts that match the ad copy, based on {product_website} and {product_details}. Do not show the product literally.",
+      "agent": "senior_photographer",
+      "expected_output": "Three paragraph-length photo concepts, each highly specific and evocative."
+    },
+    "review_photo": {
+      "type": "Task",
+      "description": "Review the proposed photographs for alignment with goals; approve or request changes. Provide concise rationale and actionable feedback.",
+      "agent": "chief_creative_director",
+      "expected_output": "Three reviewed photo options with clear improvement notes if needed."
+    }
+  },
+  "tools": {
+    "defined": {
+      "SearchTools.search_internet": {
+        "type": "decorated_method",
+        "display_name": "Search internet",
+        "source_code": "def search_internet(query):\n    \"\"\"Useful to search the internet about a given topic and return relevant results.\"\"\"\n    return SearchTools.search(query)",
+        "description": "Search the internet and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_internet"
+      },
+      "SearchTools.search_instagram": {
+        "type": "decorated_method",
+        "display_name": "Search instagram",
+        "source_code": "def search_instagram(query):\n    \"\"\"Useful to search for instagram post about a given topic and return relevant results.\"\"\"\n    query = f\"site:instagram.com {query}\"\n    return SearchTools.search(query)",
+        "description": "Search Instagram for posts about a topic and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_instagram"
+      },
+      "BrowserTools.scrape_and_summarize_website": {
+        "type": "decorated_method",
+        "display_name": "Scrape website content",
+        "source_code": null,
+        "description": "Scrape a website and produce a long summary of its content.",
+        "class": "BrowserTools",
+        "method": "scrape_and_summarize_website"
+      }
+    },
+    "imported": {
+      "crewai_tools.ScrapeWebsiteTool": {
+        "type": "tool_class",
+        "display_name": "Scrape website",
+        "source_code": null,
+        "description": "Scrape a web page and return content for downstream analysis.",
+        "class": "crewai_tools",
+        "method": "ScrapeWebsiteTool",
+        "arguments": {
+          "website_url": {
+            "description": "Mandatory website URL to scrape.",
+            "type": "str",
+            "required": true
+          }
+        }
+      }
+    },
+    "mcp": {}
+  },
+  "crews": {
+    "initial_copy_crew": {
+      "crew_name": "Instagram Ad Copy Crew",
+      "agents": [
+        {
+          "agent_number": 1,
+          "role": "Lead Market Analyst",
+          "goal": "Analyze the product and its competitors to ground the campaign.",
+          "backstory": "Dissects online business landscapes to find differentiators.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 2,
+          "role": "Chief Marketing Strategist",
+          "goal": "Turn insights into a coherent, high-impact campaign strategy.",
+          "backstory": "Renowned for bespoke strategies that drive adoption and growth.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet",
+            "SearchTools.search_instagram"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 3,
+          "role": "Creative Content Creator",
+          "goal": "Produce three compelling IG ad copies aligned with the strategy.",
+          "backstory": "Transforms strategy into platform-native, high-conversion narratives.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet",
+            "SearchTools.search_instagram"
+          ],
+          "verbose": true
+        }
+      ],
+      "tasks": [
+        {
+          "task_number": 1,
+          "description": "Product analysis of the website and details to surface differentiators.",
+          "expected_output": "A clear report of key selling points and improvement suggestions.",
+          "agent_role": "Lead Market Analyst",
+          "agent_number": 1
+        },
+        {
+          "task_number": 2,
+          "description": "Competitor analysis: identify top 3 competitors and compare strategies and positioning.",
+          "expected_output": "Structured competitor comparison with takeaways.",
+          "agent_role": "Lead Market Analyst",
+          "agent_number": 1
+        },
+        {
+          "task_number": 3,
+          "description": "Develop a targeted campaign strategy and creative directions.",
+          "expected_output": "Campaign strategy with creative angles and audience hooks.",
+          "agent_role": "Chief Marketing Strategist",
+          "agent_number": 2
+        },
+        {
+          "task_number": 4,
+          "description": "Write three Instagram ad copies following the strategy and hooks.",
+          "expected_output": "Three distinct ad copies ready to ship.",
+          "agent_role": "Creative Content Creator",
+          "agent_number": 3
+        }
+      ],
+      "process": "Process.sequential",
+      "verbose": true
+    },
+    "image_crew": {
+      "crew_name": "Instagram Image Crew",
+      "agents": [
+        {
+          "agent_number": 1,
+          "role": "Senior Photographer",
+          "goal": "Design three evocative Instagram photo concepts for the ad.",
+          "backstory": "Creates emotionally engaging imagery for brand storytelling.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet",
+            "SearchTools.search_instagram"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 2,
+          "role": "Chief Creative Director",
+          "goal": "Review and elevate the photo concepts to align with campaign goals.",
+          "backstory": "Leads creative excellence across deliverables.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet",
+            "SearchTools.search_instagram"
+          ],
+          "verbose": true
+        }
+      ],
+      "tasks": [
+        {
+          "task_number": 1,
+          "description": "Create three highly specific, product-adjacent photo concepts that fit the ad copy.",
+          "expected_output": "Three paragraph-length visual concepts, product not shown literally.",
+          "agent_role": "Senior Photographer",
+          "agent_number": 1
+        },
+        {
+          "task_number": 2,
+          "description": "Review the photos for alignment and quality; approve or request revisions.",
+          "expected_output": "Three reviewed photo options with rationale and improvement notes.",
+          "agent_role": "Chief Creative Director",
+          "agent_number": 2
+        }
+      ],
+      "process": "Process.sequential",
+      "verbose": true
+    }
+  }
+}

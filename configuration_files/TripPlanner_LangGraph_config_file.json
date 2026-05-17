@@ -1,0 +1,304 @@
+{
+  "system_name": "TripPlannerGraph",
+  "framework": "langgraph",
+  "workflow_type": "state_graph",
+  "state_schema": {
+    "trip_details": {
+      "type": "object",
+      "properties": {
+        "traveling_from": {"type": "string"},
+        "trip_date": {"type": "string"},
+        "traveler_interests": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "selected_city": {
+      "type": "object", 
+      "properties": {
+        "name": {"type": "string"},
+        "weather_forecast": {"type": "string"},
+        "flight_costs": {"type": "string"},
+        "attractions": {"type": "array", "items": {"type": "string"}},
+        "selection_report": {"type": "string"}
+      }
+    },
+    "city_guide": {
+      "type": "object",
+      "properties": {
+        "comprehensive_guide": {"type": "string"},
+        "local_insights": {"type": "string"},
+        "cultural_tips": {"type": "string"},
+        "hidden_gems": {"type": "array", "items": {"type": "string"}},
+        "practical_tips": {"type": "string"}
+      }
+    },
+    "travel_itinerary": {
+      "type": "object",
+      "properties": {
+        "full_itinerary": {"type": "string"},
+        "daily_schedule": {"type": "array", "items": {"type": "object"}},
+        "budget_breakdown": {"type": "object"},
+        "packing_suggestions": {"type": "array", "items": {"type": "string"}},
+        "weather_conditions": {"type": "array", "items": {"type": "object"}},
+        "recommended_hotels": {"type": "array", "items": {"type": "string"}},
+        "recommended_restaurants": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "current_step": {"type": "string"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "messages": {"type": "array", "items": {"type": "object"}}
+  },
+  "nodes": [
+    {
+      "id": "city_selection_node",
+      "name": "City Selection Expert",
+      "type": "agent_node",
+      "agent_config": {
+        "role": "City Selection Expert",
+        "goal": "Select the best city based on weather, season, and prices",
+        "backstory": "An expert in analyzing travel data to pick ideal destinations",
+        "system_prompt": "You are a City Selection Expert with deep knowledge of global destinations. Your expertise lies in analyzing travel data including weather patterns, seasonal events, flight costs, and destination attractiveness. You excel at comparing multiple cities and selecting the optimal destination based on specific criteria.",
+        "max_iterations": 25,
+        "temperature": 0.3
+      },
+      "tools": [
+        {
+          "name": "web_scraper",
+          "description": "Read and extract content from websites for travel information",
+          "function": "scrape_website",
+          "parameters": {
+            "website_url": {"type": "string", "description": "URL to scrape for travel data"}
+          }
+        },
+        {
+          "name": "search_internet", 
+          "description": "Search the internet for travel-related information",
+          "function": "internet_search",
+          "parameters": {
+            "query": {"type": "string", "description": "Search query for travel information"}
+          }
+        }
+      ],
+      "task_description": "Analyze and select the best city for the trip based on specific criteria such as weather patterns, seasonal events, and travel costs. Compare multiple cities, considering factors like current weather conditions, upcoming cultural or seasonal events, and overall travel expenses. Provide a detailed report on the chosen city including actual flight costs, weather forecast and attractions.",
+      "expected_output": "selected_city",
+      "input_dependencies": ["trip_details"],
+      "conditional_logic": null
+    },
+    {
+      "id": "local_expert_node", 
+      "name": "Local Expert",
+      "type": "agent_node",
+      "agent_config": {
+        "role": "Local Expert at this city",
+        "goal": "Provide the BEST insights about the selected city",
+        "backstory": "A knowledgeable local guide with extensive information about the city, its attractions and customs",
+        "system_prompt": "You are a Local Expert with intimate knowledge of your city. You know the hidden gems, cultural hotspots, local customs, and insider tips that only a local would know. Your mission is to provide comprehensive, authentic insights that will make any visitor's experience truly exceptional.",
+        "max_iterations": 25,
+        "temperature": 0.4
+      },
+      "tools": [
+        {
+          "name": "search_internet",
+          "description": "Search for local information and insights about the city", 
+          "function": "internet_search",
+          "parameters": {
+            "query": {"type": "string", "description": "Search query for local city information"}
+          }
+        }
+      ],
+      "task_description": "As a local expert on this city, compile an in-depth guide for someone traveling there and wanting to have THE BEST trip ever! Gather information about key attractions, local customs, special events, and daily activity recommendations. Find the best spots to go to, the kind of place only a local would know. Create a comprehensive city guide, rich in cultural insights and practical tips, tailored to enhance the travel experience.",
+      "expected_output": "city_guide", 
+      "input_dependencies": ["selected_city", "trip_details"],
+      "conditional_logic": null
+    },
+    {
+      "id": "travel_concierge_node",
+      "name": "Travel Concierge", 
+      "type": "agent_node",
+      "agent_config": {
+        "role": "Amazing Travel Concierge",
+        "goal": "Create the most amazing travel itineraries with budget and packing suggestions for the city",
+        "backstory": "Specialist in travel planning and logistics with decades of experience",
+        "system_prompt": "You are an Amazing Travel Concierge with decades of experience in creating exceptional travel itineraries. You excel at transforming city guides into detailed, day-by-day travel plans that include specific hotels, restaurants, activities, budget breakdowns, and practical advice. Your itineraries are known for being both comprehensive and achievable.",
+        "max_iterations": 25,
+        "temperature": 0.3
+      },
+      "tools": [
+        {
+          "name": "search_internet",
+          "description": "Search for specific hotels, restaurants, and activities",
+          "function": "internet_search", 
+          "parameters": {
+            "query": {"type": "string", "description": "Search query for travel logistics"}
+          }
+        },
+        {
+          "name": "web_scraper",
+          "description": "Read detailed information from hotel and restaurant websites",
+          "function": "scrape_website",
+          "parameters": {
+            "website_url": {"type": "string", "description": "URL to scrape for detailed travel information"}
+          }
+        },
+        {
+          "name": "calculator",
+          "description": "Perform mathematical calculations for budget planning",
+          "function": "calculate",
+          "parameters": {
+            "expression": {"type": "string", "description": "Mathematical expression to calculate"}
+          }
+        }
+      ],
+      "task_description": "Expand the city guide into a full 7-day travel itinerary with detailed per-day plans, including weather forecasts, places to eat, packing suggestions, and a budget breakdown. Suggest actual places to visit, actual hotels to stay and actual restaurants to go to. Create a complete expanded travel plan, formatted as markdown, encompassing a daily schedule, anticipated weather conditions, recommended clothing and items to pack, and a detailed budget. Be specific and give reasons why you picked each place, what makes them special!",
+      "expected_output": "travel_itinerary",
+      "input_dependencies": ["city_guide", "selected_city", "trip_details"],
+      "conditional_logic": null
+    },
+    {
+      "id": "start_node",
+      "name": "Start",
+      "type": "start_node",
+      "agent_config": null,
+      "tools": [],
+      "task_description": "Initialize the trip planning process with user inputs",
+      "expected_output": "trip_details",
+      "input_dependencies": [],
+      "conditional_logic": null
+    },
+    {
+      "id": "end_node", 
+      "name": "End",
+      "type": "end_node",
+      "agent_config": null,
+      "tools": [],
+      "task_description": "Finalize and return the complete trip plan",
+      "expected_output": "final_result",
+      "input_dependencies": ["travel_itinerary"],
+      "conditional_logic": null
+    },
+    {
+      "id": "error_handler_node",
+      "name": "Error Handler",
+      "type": "conditional_node", 
+      "agent_config": null,
+      "tools": [],
+      "task_description": "Handle errors and determine retry or failure paths",
+      "expected_output": "error_decision",
+      "input_dependencies": ["errors"],
+      "conditional_logic": {
+        "condition_type": "error_check",
+        "logic": "if len(state['errors']) > 0 and len(state['errors']) < 3: return 'retry' else: return 'fail'"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "start_node",
+      "to": "city_selection_node",
+      "condition": null,
+      "edge_type": "sequential"
+    },
+    {
+      "from": "city_selection_node", 
+      "to": "local_expert_node",
+      "condition": "state['selected_city'] is not None",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "city_selection_node",
+      "to": "error_handler_node", 
+      "condition": "state['selected_city'] is None",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "local_expert_node",
+      "to": "travel_concierge_node",
+      "condition": "state['city_guide'] is not None", 
+      "edge_type": "conditional"
+    },
+    {
+      "from": "local_expert_node",
+      "to": "error_handler_node",
+      "condition": "state['city_guide'] is None",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "travel_concierge_node",
+      "to": "end_node",
+      "condition": "state['travel_itinerary'] is not None",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "travel_concierge_node", 
+      "to": "error_handler_node",
+      "condition": "state['travel_itinerary'] is None",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "error_handler_node",
+      "to": "city_selection_node",
+      "condition": "error_decision == 'retry' and state['current_step'] == 'city_selection'",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "error_handler_node",
+      "to": "local_expert_node", 
+      "condition": "error_decision == 'retry' and state['current_step'] == 'local_expert'",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "error_handler_node",
+      "to": "travel_concierge_node",
+      "condition": "error_decision == 'retry' and state['current_step'] == 'travel_concierge'",
+      "edge_type": "conditional"
+    },
+    {
+      "from": "error_handler_node",
+      "to": "end_node",
+      "condition": "error_decision == 'fail'",
+      "edge_type": "conditional"
+    }
+  ],
+  "execution_config": {
+    "entry_point": "start_node",
+    "exit_points": ["end_node"],
+    "max_iterations": 100,
+    "timeout": 300,
+    "retry_policy": {
+      "max_retries": 3,
+      "backoff_strategy": "exponential"
+    },
+    "state_persistence": true,
+    "checkpointing": true,
+    "parallel_execution": false
+  },
+  "tools_registry": {
+    "scrape_website": {
+      "description": "Tool to scrape content from websites",
+      "implementation": "web_scraping_tool",
+      "parameters": {
+        "website_url": {"type": "string", "required": true}
+      }
+    },
+    "internet_search": {
+      "description": "Tool to search the internet for information",
+      "implementation": "search_tool", 
+      "parameters": {
+        "query": {"type": "string", "required": true}
+      }
+    },
+    "calculate": {
+      "description": "Tool to perform mathematical calculations",
+      "implementation": "calculator_tool",
+      "parameters": {
+        "expression": {"type": "string", "required": true}
+      }
+    }
+  },
+  "system_metadata": {
+    "verbose": true,
+    "shared_memory": true,
+    "has_manager": false,
+    "state_management": "centralized",
+    "conversation_memory": true
+  }
+}
