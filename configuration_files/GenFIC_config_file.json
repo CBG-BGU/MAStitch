@@ -1,0 +1,165 @@
+{
+  "system_name": "GenFIC Stories Generator",
+  "framework": "langgraph",
+  "workflow_type": "sequential",
+  "agents": [
+    {
+      "id": "story_seeds_agent",
+      "role": "Story Seeds Agent",
+      "goal": "Brainstorm potential story seeds, initial conflicts, and thematic/setting suggestions (considering a 1000–2000 word final story).",
+      "backstory": "Generates initial story ideas, themes, and conflicts to kick-start the narrative pipeline.",
+      "tools": [
+        {
+          "name": "GoogleSerperResults",
+          "description": "Search the web and return results; only snippets are used for inspiration.",
+          "parameters": {},
+          "tool_type": "SearchTool",
+          "module": "langchain_community.tools.google_serper.GoogleSerperResults",
+          "metadata": {}
+        }
+      ],
+      "metadata": {}
+    },
+    {
+      "id": "character_craft_agent",
+      "role": "Character Craft Agent",
+      "goal": "Create primary and secondary character profiles and motivational backstories from seeds/conflicts/themes.",
+      "backstory": "Designs character bios, sketches, and motivations aligned with the selected themes and conflicts.",
+      "tools": [
+        {
+          "name": "WikipediaTool",
+          "description": "Fetch a brief summary for a topic to inform character/world details.",
+          "parameters": {
+            "query": "str"
+          },
+          "tool_type": "KnowledgeTool",
+          "module": "wikipedia",
+          "metadata": {}
+        }
+      ],
+      "metadata": {}
+    },
+    {
+      "id": "plot_weaver_agent",
+      "role": "Plot Weaver Agent",
+      "goal": "Integrate seeds and character details to produce a structured plot outline and a resolved timeline of events (respecting the 1000–2000 word range).",
+      "backstory": "Arranges narrative beats into a coherent beginning–middle–end and constructs a timeline of events.",
+      "tools": [
+        {
+          "name": "GoogleSerperResults",
+          "description": "Search the web and return results; only snippets are used for inspiration.",
+          "parameters": {},
+          "tool_type": "SearchTool",
+          "module": "langchain_community.tools.google_serper.GoogleSerperResults",
+          "metadata": {}
+        }
+      ],
+      "metadata": {}
+    },
+    {
+      "id": "conflict_resolution_agent",
+      "role": "Conflict Resolution Agent",
+      "goal": "Refine conflict and resolution elements to strengthen narrative tension and clarity.",
+      "backstory": "Analyzes the plot outline and timeline to enhance conflict structure and resolution strategy.",
+      "tools": [
+        {
+          "name": "GoogleSerperResults",
+          "description": "Search the web and return results; only snippets are used for inspiration.",
+          "parameters": {},
+          "tool_type": "SearchTool",
+          "module": "langchain_community.tools.google_serper.GoogleSerperResults",
+          "metadata": {}
+        }
+      ],
+      "metadata": {}
+    },
+    {
+      "id": "story_refiner_agent",
+      "role": "Story Refiner Agent",
+      "goal": "Produce a polished final short story of 1000–2000 words from the refined conflict and resolution.",
+      "backstory": "Transforms refined structures into a coherent, paced, and stylistically consistent final story.",
+      "tools": [
+        {
+          "name": "DallETool",
+          "description": "Optional image generation for inspiration (if implemented).",
+          "parameters": {
+            "prompt": "str"
+          },
+          "tool_type": "ImageTool",
+          "module": "dalle_tool.DallETool",
+          "metadata": {
+            "optional": true
+          }
+        }
+      ],
+      "metadata": {}
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1_seeds",
+      "description": "Brainstorm potential story seeds, initial conflicts, and thematic/setting suggestions based on user input (theme/tone/references).",
+      "expected_output": "1) List of potential story seeds 2) Initial conflict ideas 3) Possible thematic and setting suggestions",
+      "agent_id": "story_seeds_agent",
+      "dependencies": [],
+      "priority": null,
+      "metadata": {}
+    },
+    {
+      "id": "t2_characters",
+      "description": "Create primary and secondary character profiles and motivational backstories using the seeds, conflicts, and thematic suggestions.",
+      "expected_output": "1) Primary character bios 2) Secondary character sketches 3) Motivational backstories",
+      "agent_id": "character_craft_agent",
+      "dependencies": [
+        "t1_seeds"
+      ],
+      "priority": null,
+      "metadata": {}
+    },
+    {
+      "id": "t3_plot",
+      "description": "Integrate seeds and character details to produce a structured plot outline (beginning–middle–end) and a resolved timeline of events.",
+      "expected_output": "1) Structured plot outline 2) Timeline of narrative events",
+      "agent_id": "plot_weaver_agent",
+      "dependencies": [
+        "t2_characters"
+      ],
+      "priority": null,
+      "metadata": {}
+    },
+    {
+      "id": "t4_conflict",
+      "description": "Analyze and refine conflict and resolution elements for strong tension and clarity.",
+      "expected_output": "1) Enhanced conflict framework 2) Refined resolution strategy",
+      "agent_id": "conflict_resolution_agent",
+      "dependencies": [
+        "t3_plot"
+      ],
+      "priority": null,
+      "metadata": {}
+    },
+    {
+      "id": "t5_story",
+      "description": "Write the final polished short story (1000–2000 words) using the enhanced conflict framework and refined resolution strategy.",
+      "expected_output": "Final short story (1000–2000 words).",
+      "agent_id": "story_refiner_agent",
+      "dependencies": [
+        "t4_conflict"
+      ],
+      "priority": null,
+      "metadata": {}
+    }
+  ],
+  "system_metadata": {
+    "verbose": true,
+    "shared_memory": false,
+    "has_manager": false
+  },
+  "extraction_metadata": {
+    "extraction_timestamp": "2025-09-21T07:40:47",
+    "source_files": [
+      "genfic_stories.py",
+      "README.md for GenFic Stories Generator.pdf"
+    ]
+  }
+}

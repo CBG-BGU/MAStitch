@@ -1,0 +1,174 @@
+{
+  "system_name": "Game Builder Application",
+  "framework": "crewai",
+  "summary": {
+    "num_agents": 3,
+    "num_tasks": 3,
+    "num_crews": 1,
+    "tools_defined": 2,
+    "tools_imported": 1,
+    "tools_mcp": 0
+  },
+  "agents": {
+    "chief_qa_engineer": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Chief Software Quality Control Engineer",
+      "goal": "Ensure that the code does the job that it is supposed to do",
+      "backstory": "You feel that programmers always do only half the job, so you are\n super dedicate to make high quality code.",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    },
+    "qa_engineer": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Software Quality Control Engineer",
+      "goal": "Create Perfect code, by analyzing the code that is given for errors",
+      "tools": [
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    },
+    "senior_engineer": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Senior Software Engineer",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    }
+  },
+  "tasks": {
+    "code_task": {
+      "type": "Task",
+      "description": "\n You will create a game using python, these are the instructions:\n Instructions\n  ------------\n { Gam}\n            ",
+      "agent": "senior_engineer",
+      "expected_output": "Your Final answer must be the full python code, only the python code and nothing else. If you need images or other files, please include them in the code or use appropriate URLs to reference online images."
+    },
+    "evaluate_task": {
+      "type": "Task",
+      "description": "\n      You are helping create a game using python, these are the instructions:\n                Instructions\n    ------------\n    {nfo(}\n  You will look over the code to insure that it is complete and\n  does the job that it is supposed to do.\n ",
+      "agent": "chief_qa_engineer",
+      "expected_output": "Your Final answer must be the full python code, only the python code and nothing else."
+    },
+    "review_task": {
+      "type": "Task",
+      "description": "\n     You will create a game using python, these are the instructions:\n Instructions\n ------------\n     {l ex}\n Using the code you got, check for errors. Check for logic errors,\n syntax errors, missing imports, variable declarations, mismatched brackets,\n  and security vulnerabilities.\n ",
+      "agent": "qa_engineer",
+      "expected_output": "Your Final answer must be the full python code, only the python code and nothing else."
+    }
+  },
+  "tools": {
+    "defined": {
+      "SearchTools.search_instagram": {
+        "type": "decorated_method",
+        "display_name": "Search instagram",
+        "source_code": "def search_instagram(query):\n    \"\"\"Useful to search for instagram post about a given topic and return relevant results.\"\"\"\n    query = f\"site:instagram.com {query}\"\n    return SearchTools.search(query)",
+        "description": "Useful to search for instagram post about a given topic and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_instagram"
+      },
+      "SearchTools.search_internet": {
+        "type": "decorated_method",
+        "display_name": "Search internet",
+        "source_code": "def search_internet(query):\n    \"\"\"Useful to search the internet about a given topic and return relevant results.\"\"\"\n    return SearchTools.search(query)",
+        "description": "Useful to search the internet about a given topic and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_internet"
+      }
+    },
+    "imported": {
+      "crewai_tools.ScrapeWebsiteTool": {
+        "type": "tool_class",
+        "display_name": "Scrape website",
+        "source_code": null,
+        "description": "Useful to scrape a web page and return its content for downstream analysis.",
+        "class": "crewai_tools",
+        "method": "ScrapeWebsiteTool",
+        "arguments": {
+          "website_url": {
+            "description": "Mandatory website URL to read/scrape.",
+            "type": "str",
+            "required": true
+          }
+        }
+      }
+    },
+    "mcp": {}
+  },
+  "crews": {
+    "game_crew": {
+      "crew_name": "Game Builder Application Crew",
+      "agents": [
+        {
+          "agent_number": 1,
+          "role": "Chief Software Quality Control Engineer",
+          "goal": "Ensure that the code does the job that it is supposed to do",
+          "backstory": "You feel that programmers always do only half the job, so you are\n super dedicate to make high quality code.",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 2,
+          "role": "Software Quality Control Engineer",
+          "goal": "Create Perfect code, by analyzing the code that is given for errors",
+          "backstory": "",
+          "tools": [
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 3,
+          "role": "Senior Software Engineer",
+          "goal": "",
+          "backstory": "",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        }
+      ],
+      "tasks": [
+        {
+          "task_number": 1,
+          "description": "\n You will create a game using python, these are the instructions:\n Instructions\n  ------------\n { Gam}\n            ",
+          "expected_output": "Your Final answer must be the full python code, only the python code and nothing else. If you need images or other files, please include them in the code or use appropriate URLs to reference online images.",
+          "agent_role": "Senior Software Engineer",
+          "agent_number": 3
+        },
+        {
+          "task_number": 2,
+          "description": "\n      You are helping create a game using python, these are the instructions:\n                Instructions\n    ------------\n    {nfo(}\n  You will look over the code to insure that it is complete and\n  does the job that it is supposed to do.\n ",
+          "expected_output": "Your Final answer must be the full python code, only the python code and nothing else.",
+          "agent_role": "Chief Software Quality Control Engineer",
+          "agent_number": 1
+        },
+        {
+          "task_number": 3,
+          "description": "\n     You will create a game using python, these are the instructions:\n Instructions\n ------------\n     {l ex}\n Using the code you got, check for errors. Check for logic errors,\n syntax errors, missing imports, variable declarations, mismatched brackets,\n  and security vulnerabilities.\n ",
+          "expected_output": "Your Final answer must be the full python code, only the python code and nothing else.",
+          "agent_role": "Software Quality Control Engineer",
+          "agent_number": 2
+        }
+      ],
+      "process": "Process.sequential",
+      "verbose": true
+    }
+  }
+}

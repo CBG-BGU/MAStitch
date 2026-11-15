@@ -1,0 +1,195 @@
+{
+  "system_name": "Trip Planner Application",
+  "framework": "crewai",
+  "summary": {
+    "num_agents": 3,
+    "num_tasks": 3,
+    "num_crews": 1,
+    "tools_defined": 4,
+    "tools_imported": 1,
+    "tools_mcp": 0
+  },
+  "agents": {
+    "city_selection_expert": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "City Selection Expert",
+      "goal": "Select the best city based on weather, season, and prices",
+      "backstory": "An expert in analyzing travel data to pick ideal destinations",
+      "tools": [
+        "ScrapeWebsiteTool()",
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    },
+    "local_expert": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Local Expert at this city",
+      "goal": "Provide the BEST insights about the selected city",
+      "backstory": "A knowledgeable local guide with extensive information\n        about the city, it's attractions and customs",
+      "tools": [
+        "SearchTools.search_internet"
+      ],
+      "verbose": true
+    },
+    "travel_concierge": {
+      "type": "Agent",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Amazing Travel Concierge",
+      "goal": "Create the most amazing travel itineraries with budget and \n        packing suggestions for the city",
+      "backstory": "Specialist in travel planning and logistics with \n        decades of experience",
+      "tools": [
+        "SearchTools.search_internet",
+        "ScrapeWebsiteTool()",
+        "CalculatorTools.calculate"
+      ],
+      "verbose": true
+    }
+  },
+  "tasks": {
+    "identify_task": {
+      "type": "Task",
+      "description": "Analyze and select the best city for the trip based \n                on specific criteria such as weather patterns, seasonal\n                events, and travel costs. This task involves comparing\n                multiple cities, considering factors like current weather\n                conditions, upcoming cultural or seasonal events, and\n                overall travel expenses. \n                \n                Your final answer must be a detailed\n                report on the chosen city, and everything you found out\n                about it, including the actual flight costs, weather \n                forecast and attractions.\n                If you do your BEST WORK, I'll tip you $100!\n\n                Traveling from: {origin}\n                City Options: {cities}\n                Trip Date: {range}\n                Traveler Interests: {interests}\n            ",
+      "agent": "city_selection_expert",
+      "expected_output": "Detailed report on the chosen city including flight costs, weather forecast, and attractions"
+    },
+    "gather_task": {
+      "type": "Task",
+      "description": "As a local expert on this city you must compile an \n                in-depth guide for someone traveling there and wanting \n                to have THE BEST trip ever!\n                Gather information about key attractions, local customs,\n                special events, and daily activity recommendations.\n                Find the best spots to go to, the kind of place only a\n                local would know.\n                This guide should provide a thorough overview of what \n                the city has to offer, including hidden gems, cultural\n                hotspots, must-visit landmarks, weather forecasts, and\n                high level costs.\n                \n                The final answer must be a comprehensive city guide, \n                rich in cultural insights and practical tips, \n                tailored to enhance the travel experience.\n                If you do your BEST WORK, I'll tip you $100!\n\n                Trip Date: {range}\n                Traveling from: {origin}\n                Traveler Interests: {interests}\n            ",
+      "agent": "local_expert",
+      "expected_output": "Comprehensive city guide including hidden gems, cultural hotspots, and practical travel tips"
+    },
+    "plan_task": {
+      "type": "Task",
+      "description": "Expand this guide into a full 7-day travel \n                itinerary with detailed per-day plans, including \n                weather forecasts, places to eat, packing suggestions, \n                and a budget breakdown.\n                \n                You MUST suggest actual places to visit, actual hotels \n                to stay and actual restaurants to go to.\n                \n                This itinerary should cover all aspects of the trip, \n                from arrival to departure, integrating the city guide\n                information with practical travel logistics.\n                \n                Your final answer MUST be a complete expanded travel plan,\n                formatted as markdown, encompassing a daily schedule,\n                anticipated weather conditions, recommended clothing and\n                items to pack, and a detailed budget, ensuring THE BEST\n                TRIP EVER. Be specific and give it a reason why you picked\n                each place, what makes them special! If you do your BEST WORK, I'll tip you $100!\n\n                Trip Date: {range}\n                Traveling from: {origin}\n                Traveler Interests: {interests}\n            ",
+      "agent": "travel_concierge",
+      "expected_output": "Complete expanded travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown"
+    }
+  },
+  "tools": {
+    "defined": {
+      "SearchTools.search_internet": {
+        "type": "decorated_method",
+        "display_name": "Search internet",
+        "source_code": "def search_internet(query):\n    \"\"\"Useful to search the internet about a given topic and return relevant\n    results.\"\"\"\n    fixed_query = extract_query(query)\n    return SearchTools.search(fixed_query)",
+        "description": "Useful to search the internet about a given topic and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_internet"
+      },
+      "SearchTools.search_instagram": {
+        "type": "decorated_method",
+        "display_name": "Search instagram",
+        "source_code": "def search_instagram(query):\n    \"\"\"Useful to search for instagram post about a given topic and return relevant\n    results.\"\"\"\n    fixed_query = extract_query(query)\n    fixed_query = f\"site:instagram.com {fixed_query}\"\n    return SearchTools.search(fixed_query)",
+        "description": "Useful to search for instagram post about a given topic and return relevant results.",
+        "class": "SearchTools",
+        "method": "search_instagram"
+      },
+      "CalculatorTools.calculate": {
+        "type": "decorated_method",
+        "display_name": "Make a calculation",
+        "source_code": "def calculate(operation):\n    \"\"\"Useful to perform any mathematical calculations, like sum, minus, multiplication, division, etc. The input to this tool should be a mathematical expression, e.g., `200*7` or `5000/2*10`.\"\"\"\n    try:\n        return eval(operation)\n    except SyntaxError:\n        return \"Error: Invalid syntax in mathematical expression\"",
+        "description": "Useful to perform mathematical calculations such as addition, subtraction, multiplication, and division. Input should be a valid expression (e.g., 200*7).",
+        "class": "CalculatorTools",
+        "method": "calculate"
+      },
+      "BrowserTools.scrape_and_summarize_website": {
+        "type": "decorated_method",
+        "display_name": "Scrape website content",
+        "source_code": null,
+        "description": "Scrape a website and produce a long summary of its content.",
+        "class": "BrowserTools",
+        "method": "scrape_and_summarize_website"
+      }
+    },
+    "imported": {
+      "crewai_tools.ScrapeWebsiteTool": {
+        "type": "tool_class",
+        "display_name": "Scrape website",
+        "source_code": null,
+        "description": "Useful to scrape a web page and return its content for downstream analysis.",
+        "class": "crewai_tools",
+        "method": "ScrapeWebsiteTool",
+        "arguments": {
+          "website_url": {
+            "description": "Mandatory website URL to read/scrape.",
+            "type": "str",
+            "required": true
+          }
+        }
+      }
+    },
+    "mcp": {}
+  },
+  "crews": {
+    "trip_planner_crew": {
+      "crew_name": "Trip Planner Crew",
+      "agents": [
+        {
+          "agent_number": 1,
+          "role": "City Selection Expert",
+          "goal": "Select the best city based on weather, season, and prices",
+          "backstory": "An expert in analyzing travel data to pick ideal destinations",
+          "tools": [
+            "ScrapeWebsiteTool()",
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 2,
+          "role": "Local Expert at this city",
+          "goal": "Provide the BEST insights about the selected city",
+          "backstory": "A knowledgeable local guide with extensive information\n        about the city, it's attractions and customs",
+          "tools": [
+            "SearchTools.search_internet"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 3,
+          "role": "Amazing Travel Concierge",
+          "goal": "Create the most amazing travel itineraries with budget and \n        packing suggestions for the city",
+          "backstory": "Specialist in travel planning and logistics with \n        decades of experience",
+          "tools": [
+            "SearchTools.search_internet",
+            "ScrapeWebsiteTool()",
+            "CalculatorTools.calculate"
+          ],
+          "verbose": true
+        }
+      ],
+      "tasks": [
+        {
+          "task_number": 1,
+          "description": "Analyze and select the best city for the trip based on criteria (weather, season, prices). Provide detailed findings, including actual flight costs, weather forecast and attractions. If you do your BEST WORK, I'll tip you $100!",
+          "expected_output": "Detailed report on the chosen city including flight costs, weather forecast, and attractions",
+          "agent_role": "City Selection Expert",
+          "agent_number": 1
+        },
+        {
+          "task_number": 2,
+          "description": "Compile a comprehensive local guide (hidden gems, cultural hotspots, customs, events, weather, high-level costs) tailored to the traveler. If you do your BEST WORK, I'll tip you $100!",
+          "expected_output": "Comprehensive city guide including hidden gems, cultural hotspots, and practical travel tips",
+          "agent_role": "Local Expert at this city",
+          "agent_number": 2
+        },
+        {
+          "task_number": 3,
+          "description": "Expand into a 7-day itinerary with daily plans, hotels, restaurants, packing suggestions, weather, and budget; justify each recommendation. If you do your BEST WORK, I'll tip you $100!",
+          "expected_output": "Complete expanded travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown",
+          "agent_role": "Amazing Travel Concierge",
+          "agent_number": 3
+        }
+      ],
+      "process": "Process.sequential",
+      "verbose": true
+    }
+  }
+}

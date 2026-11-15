@@ -7,7 +7,6 @@ from MAStitch_tools import *
 from MAStitch_utils import *
 from MAStitch_config import *
 import os, json, time
-from threading import Lock
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -65,7 +64,7 @@ class LAA:
             max_iter=5,
             max_execution_time=30,
             tools=[internet_search_tool],
-            allow_delegation=True,
+            allow_delegation=False,
             verbose=False,
         )
 
@@ -146,7 +145,7 @@ class LAA:
                 try:
                     score_str = line.split(":")[1].strip()
                     validity_score = float(score_str)
-                except:
+                except ValueError:
                     validity_score = 50.0
             elif "DETECTED_ISSUES:" in line:
                 # Collect issues until next section
@@ -155,7 +154,7 @@ class LAA:
                     key in lines[j] for key in ["EXPLANATION:", "SUMMARY:"]
                 ):
                     issue = lines[j].strip().strip("-").strip()
-                    if issue and str(issue).lower() != "NoneType":
+                    if issue and issue.lower() != "none":
                         detected_issues.append(issue)
                     j += 1
             elif "EXPLANATION:" in line:
@@ -195,7 +194,7 @@ class GAA:
             llm=MODEL_GAA,
             max_iter=5,
             max_execution_time=30,
-            allow_delegation=True,
+            allow_delegation=False,
             tools=[internet_search_tool],
             verbose=False,
         )
@@ -273,7 +272,7 @@ class GAA:
             if "CONFIDENCE_SCORE:" in line:
                 try:
                     confidence_score = float(line.split(":")[1].strip())
-                except:
+                except ValueError:
                     confidence_score = 0.0
             elif "SHOULD_ALERT:" in line:
                 should_alert = "YES" in line.upper()
@@ -313,14 +312,18 @@ class GAA:
         self.contextual_memory = "\n".join(memory_items[-5:])
 
 
-def analyze_log_file(log_path: str, system_config: str, output_dir: str = "output") -> int:
+def analyze_log_file(log_path: str, config_path: str, output_dir: str = "alerts"):
     """Parallel log file analysis with N chunk workers + 1 global analyzer.
 
-    Returns:
-        0 if benign, 1 if an anomaly/threat was detected.
+    - Each chunk worker evaluates exactly one chunk and pushes result to the queue.
+    - A single Global Analyzer thread consumes results, performs aggregation/decision,
+      and preserves original behavior (alert file, prints, returns tuple).
+    - Short-circuits further *decisions* after a stop condition while still draining the queue.
     """
-    os.makedirs(output_dir, exist_ok=True)
     print(f"\n🔍 Analyzing: {os.path.basename(log_path)}")
+    with open(config_path, "r", encoding="utf-8-sig") as f:
+        system_config = f.read()
+    os.makedirs(output_dir, exist_ok=True)
     chunks, token_counts = create_log_chunks(log_path)
     total_tokens_events_log = sum(token_counts)
     num_chunks = len(chunks)
@@ -373,101 +376,105 @@ def analyze_log_file(log_path: str, system_config: str, output_dir: str = "outpu
             False  # once True, skip orchestrator decisions but still drain results
         )
 
+        pending = {}  # results that arrived before their turn
+        next_idx = 0  # chunks are decided in log order, not completion order
         while consumed < num_chunks:
             msg = results_q.get()  # blocking read (no busy-wait)
+            consumed += 1
+            pending[msg["idx"]] = msg
+            while next_idx in pending:
+                msg = pending.pop(next_idx)
+                next_idx += 1
+                if msg.get("kind") == "chunk_result":
+                    ce: ChunkEvaluation = msg["chunk_eval"]
+                    ct: TokenUsage = msg["chunk_tokens"]
 
-            if msg.get("kind") == "chunk_result":
-                consumed += 1
-                ce: ChunkEvaluation = msg["chunk_eval"]
-                ct: TokenUsage = msg["chunk_tokens"]
+                    # Always merge chunk token usage (work already done by the worker)
+                    total_token_usage.total_tokens += ct.total_tokens
+                    total_token_usage.prompt_tokens += ct.prompt_tokens
+                    total_token_usage.completion_tokens += ct.completion_tokens
 
-                # Always merge chunk token usage (work already done by the worker)
-                total_token_usage.total_tokens += ct.total_tokens
-                total_token_usage.prompt_tokens += ct.prompt_tokens
-                total_token_usage.completion_tokens += ct.completion_tokens
+                    if not stop_accepting:
+                        # Original per-chunk prints
+                        print(f"    📈 Validity Score: {ce.validity_score:.1f}/100")
+                        if ce.detected_issues:
+                            print(f"    ⚠️  Issues: {ce.detected_issues}")
 
-                if not stop_accepting:
-                    # Original per-chunk prints
-                    print(f"    📈 Validity Score: {ce.validity_score:.1f}/100")
-                    if ce.detected_issues:
-                        print(f"    ⚠️  Issues: {ce.detected_issues}")
+                        # Global decision (original logic)
+                        decision, decision_tokens = orchestrator.make_decision(ce)
+                        print(f"    🎯 Confidence: {decision.confidence_score:.1f}%")
 
-                    # Global decision (original logic)
-                    decision, decision_tokens = orchestrator.make_decision(ce)
-                    print(f"    🎯 Confidence: {decision.confidence_score:.1f}%")
+                        # Merge decision token usage
+                        total_token_usage.total_tokens += decision_tokens.total_tokens
+                        total_token_usage.prompt_tokens += decision_tokens.prompt_tokens
+                        total_token_usage.completion_tokens += (
+                            decision_tokens.completion_tokens
+                        )
 
-                    # Merge decision token usage
-                    total_token_usage.total_tokens += decision_tokens.total_tokens
-                    total_token_usage.prompt_tokens += decision_tokens.prompt_tokens
-                    total_token_usage.completion_tokens += (
-                        decision_tokens.completion_tokens
-                    )
+                        final_decision = decision
 
-                    final_decision = decision
+                        if decision.alert_triggered and not alert_raised:
+                            alert_raised = True
+                            stop_accepting = True  # short-circuit further decisions
 
-                    if decision.alert_triggered and not alert_raised:
-                        alert_raised = True
-                        stop_accepting = True  # short-circuit further decisions
+                            end_time_inner = time.time()
+                            time_elapsed_inner = end_time_inner - start_time
+                            print(f"  🚨 ALERT TRIGGERED! {decision.reasoning}")
+                            print(
+                                f"  ⏱️ Total analysis time: {time_elapsed_inner:.2f} seconds"
+                            )
+                            print(
+                                f"  🔢 Total tokens used: {total_token_usage.total_tokens}"
+                            )
 
-                        end_time_inner = time.time()
-                        time_elapsed_inner = end_time_inner - start_time
-                        print(f"  🚨 ALERT TRIGGERED! {decision.reasoning}")
+                            # Internet tool usage (delta since start of this log)
+                            current_uses = getattr(internet_search_tool, "_usage_count", 0)
+                            internet_uses_this_log = current_uses - start_internet_uses
+
+                            # Save alert details (same format as sequential version + internet usage)
+                            alert_file = os.path.join(
+                                output_dir, f"ALERT_{os.path.basename(log_path)}.txt"
+                            )
+                            with open(alert_file, "w") as f:
+                                f.write(f"SECURITY ALERT - {os.path.basename(log_path)}\n")
+                                f.write(f"Confidence: {decision.confidence_score:.1f}%\n")
+                                f.write(f"Chunks Analyzed: {decision.chunks_analyzed}\n")
+                                f.write(f"Reasoning: {decision.reasoning}\n")
+                                f.write(
+                                    f"Analysis Time: {time_elapsed_inner:.2f} seconds\n"
+                                )
+                                f.write(f"Total Tokens: {total_token_usage.total_tokens}\n")
+                                f.write(
+                                    f"Prompt Tokens: {total_token_usage.prompt_tokens}\n"
+                                )
+                                f.write(
+                                    f"Completion Tokens: {total_token_usage.completion_tokens}\n"
+                                )
+                                f.write(
+                                    f"InternetSearchTool Calls (this log): {internet_uses_this_log}\n\n"
+                                )
+
+                                f.write("Chunk Evaluations:\n")
+                                for ev in orchestrator.chunk_evaluations:
+                                    f.write(f"\nChunk {ev.chunk_id}:\n")
+                                    f.write(f"  Score: {ev.validity_score}\n")
+                                    f.write(f"  Issues: {ev.detected_issues}\n")
+                                    f.write(f"  Summary: {ev.chunk_summary}\n")
+
+                        elif not decision.should_continue:
+                            # Mirror sequential early-stop without raising an alert
+                            stop_accepting = True
+                    else:
+                        # Already stopped accepting—drain queue, skip decisions
                         print(
-                            f"  ⏱️ Total analysis time: {time_elapsed_inner:.2f} seconds"
-                        )
-                        print(
-                            f"  🔢 Total tokens used: {total_token_usage.total_tokens}"
+                            f"    ⏭️ Skipping decision for chunk {ce.chunk_id} (analysis stopped)."
                         )
 
-                        # Internet tool usage (delta since start of this log)
-                        current_uses = getattr(internet_search_tool, "_usage_count", 0)
-                        internet_uses_this_log = current_uses - start_internet_uses
-
-                        # Save alert details (same format as sequential version + internet usage)
-                        alert_file = os.path.join(
-                            output_dir, f"ALERT_{os.path.basename(log_path)}.txt"
-                        )
-                        with open(alert_file, "w") as f:
-                            f.write(f"SECURITY ALERT - {os.path.basename(log_path)}\n")
-                            f.write(f"Confidence: {decision.confidence_score:.1f}%\n")
-                            f.write(f"Chunks Analyzed: {decision.chunks_analyzed}\n")
-                            f.write(f"Reasoning: {decision.reasoning}\n")
-                            f.write(
-                                f"Analysis Time: {time_elapsed_inner:.2f} seconds\n"
-                            )
-                            f.write(f"Total Tokens: {total_token_usage.total_tokens}\n")
-                            f.write(
-                                f"Prompt Tokens: {total_token_usage.prompt_tokens}\n"
-                            )
-                            f.write(
-                                f"Completion Tokens: {total_token_usage.completion_tokens}\n"
-                            )
-                            f.write(
-                                f"InternetSearchTool Calls (this log): {internet_uses_this_log}\n\n"
-                            )
-
-                            f.write("Chunk Evaluations:\n")
-                            for ev in orchestrator.chunk_evaluations:
-                                f.write(f"\nChunk {ev.chunk_id}:\n")
-                                f.write(f"  Score: {ev.validity_score}\n")
-                                f.write(f"  Issues: {ev.detected_issues}\n")
-                                f.write(f"  Summary: {ev.chunk_summary}\n")
-
-                    elif not decision.should_continue:
-                        # Mirror sequential early-stop without raising an alert
-                        stop_accepting = True
                 else:
-                    # Already stopped accepting—drain queue, skip decisions
-                    print(
-                        f"    ⏭️ Skipping decision for chunk {ce.chunk_id} (analysis stopped)."
-                    )
-
-            else:
-                # Count errors so the analyzer can still terminate cleanly
-                consumed += 1
-                err_idx = msg.get("idx")
-                err = msg.get("error")
-                print(f"    ❗ Chunk {err_idx} error: {err}")
+                    # Count errors so the analyzer can still terminate cleanly
+                    err_idx = msg.get("idx")
+                    err = msg.get("error")
+                    print(f"    ❗ Chunk {err_idx} error: {err}")
 
         print("GlobalAnalyzer finished")
 
@@ -505,9 +512,24 @@ def analyze_log_file(log_path: str, system_config: str, output_dir: str = "outpu
         f"  🌐 InternetSearchTool used: {max(internet_uses_this_log, 0)} time(s) in this log"
     )
 
-    if not alert_raised:
-        print(f"  ⏱️ Total analysis time: {time_elapsed:.2f} seconds")
-        print(f"  🔢 Total tokens used: {total_token_usage.total_tokens}")
-        print(f"  ✅ Analysis complete - No major threats detected")
+    if alert_raised:
+        # Alert file already persisted by global analyzer (same as sequential behavior)
+        return (
+            True,
+            final_decision,
+            time_elapsed,
+            total_token_usage,
+            total_tokens_events_log,
+        )
 
-    return 1 if alert_raised else 0
+    print(f"  ⏱️ Total analysis time: {time_elapsed:.2f} seconds")
+    print(f"  🔢 Total tokens used: {total_token_usage.total_tokens}")
+    print("  ✅ Analysis complete - No major threats detected")
+
+    return (
+        False,
+        final_decision,
+        time_elapsed,
+        total_token_usage,
+        total_tokens_events_log,
+    )

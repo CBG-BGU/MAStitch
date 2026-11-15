@@ -15,4 +15,4 @@ MODEL_GAA = LLM_MODEL
 # ===== Global Monitoring Settings (tunable) =====
 VALIDITY_ALERT_THRESHOLD: float = 75.0
 CONFIDENCE_ALERT_THRESHOLD: float = 70.0
-Escalating_RISK_SCORE: float = 45.0
+ESCALATING_RISK_SCORE: float = 45.0

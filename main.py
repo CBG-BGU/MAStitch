@@ -6,6 +6,7 @@ different multi-agent applications with organized test cases.
 """
 
 from typing import Dict, List, Tuple
+import os
 from dataclasses import dataclass
 from MAStitch_detection import analyze_log_file
 
@@ -48,7 +49,8 @@ class MAStitchTester:
         print(f"Expected: {'ALERT' if test_case.expected == 1 else 'BENIGN'}")
         print(f"{'=' * 80}")
 
-        result = analyze_log_file(test_case.log_path, config_path)
+        # analyze_log_file returns a tuple; first item is True when an alert was raised
+        result = int(analyze_log_file(test_case.log_path, config_path)[0])
         print(f"Result: {result}")
         passed = (result == test_case.expected)
 
@@ -124,93 +126,76 @@ class MAStitchTester:
         print(f"{'=' * 80}\n")
 
 
-def setup_supervisor_tests() -> ApplicationTest:
-    """Configure test cases for PDF Scholar Supervisor application"""
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGS = os.path.join(BASE_DIR, "example_logs")
+CONFIGS = os.path.join(BASE_DIR, "configuration_files")
 
-    base_dir = "example_logs"  # Modify
-    config_path = "configuration_files/PdfScholar_Supervisor_config_file.json"
 
-    test_cases = [
-        # Benign Cases
-        TestCase(
-            name="Benign_01",
-            log_path=f"{base_dir}/telemetry_0929d94d-e160-4ae2-a59a-91f0a0d5746f_1764333524.json",
-            expected=0,
-            description="Normal PDF processing and search operations"
-        ),
+def trip_cases(d):
+    """One benign log and one anomaly per attack scenario (DPI = direct prompt injection)"""
+    attacks = (
+        ("Misinformation", "DPI - misinformation injection"),
+        ("Backdoor", "DPI - agent backdoor"),
+        ("Exhaustion", "DPI - resource exhaustion"),
+    )
+    cases = [TestCase("Benign_Trip", os.path.join(d, "benign_log_Trip.json"), 0, "Normal travel planning")]
+    for name, desc in attacks:
+        cases.append(TestCase(f"Attack_DPI_{name}", os.path.join(d, f"anomaly_log_DPI_{name}.json"), 1, desc))
+    return cases
 
-        # Attack Cases
-        TestCase(
-            name="Attack_01",
-            log_path=f"{base_dir}/telemetry_15c2ed89-586f-4eb3-955f-48f13fa6e6f7_1764185629.json",
-            expected=1,
-            description="Malicious behavior - should trigger alert"
-        ),
-    ]
 
+def simple_app(app_name, folder, config_file, benign, anomaly, description):
+    """Application with a single benign/anomaly log pair"""
+    d = os.path.join(LOGS, folder)
     return ApplicationTest(
-        app_name="PDF Scholar Supervisor",
-        config_path=config_path,
-        test_cases=test_cases,
-        description="LangGraph supervisor pattern with PDF processing agents"
+        app_name=app_name,
+        config_path=os.path.join(CONFIGS, config_file),
+        test_cases=[
+            TestCase("Benign", os.path.join(d, benign), 0, "Normal operation"),
+            TestCase("Attack", os.path.join(d, anomaly), 1, "Anomalous run"),
+        ],
+        description=description,
+    )
+
+
+def setup_trip_planner_crewai_tests() -> ApplicationTest:
+    """Trip Planner (CrewAI): benign/anomaly pair per attack"""
+    return ApplicationTest(
+        app_name="Trip Planner (CrewAI)",
+        config_path=os.path.join(CONFIGS, "TripPlanner_config_file.json"),
+        test_cases=trip_cases(os.path.join(LOGS, "Trip_Planner_CrewAI")),
+        description="CrewAI multi-agent travel planning with several attack vectors",
+    )
+
+
+def setup_instagram_tests() -> ApplicationTest:
+    """Instagram Marketing System (CrewAI): one benign log, one indirect prompt injection (IPI) log"""
+    d = os.path.join(LOGS, "Instagram_CrewAI")
+    return ApplicationTest(
+        app_name="Instagram Marketing (CrewAI)",
+        config_path=os.path.join(CONFIGS, "Instagram_config_file.json"),
+        test_cases=[
+            TestCase("Benign_Instagram", os.path.join(d, "benign_log_Instagram.json"), 0,
+                     "Normal Instagram ad-campaign run"),
+            TestCase("Attack_IPI", os.path.join(d, "anomaly_log_IPI.json"), 1,
+                     "Indirect prompt injection (IPI)"),
+            TestCase("Benign_Instagram_val", os.path.join(d, "benign_log_Instagram_val.json"), 0,
+                     "Normal Instagram ad-campaign run"),
+            TestCase("Attack_Instagram_val", os.path.join(d, "anomaly_log_Instagram_val.json"), 1,
+                     "Anomalous run"),
+        ],
+        description="CrewAI multi-agent Instagram marketing system",
     )
 
 
 def setup_trip_planner_tests() -> ApplicationTest:
-    """Configure test cases for Trip Planner application (CrewAI)"""
-
-    base_dir = "example_logs"  # Modify
-    config_path = "configuration_files/TripPlanner_config_file.json"
-
-    test_cases = [
-        # Misinformation Attack
-        TestCase(
-            name="Benign_Cafe",
-            log_path=f"{base_dir}/telemetry_data20250410_163705.json",
-            expected=0,
-            description="Normal travel planning"
-        ),
-        TestCase(
-            name="Attack_Misinformation",
-            log_path=f"{base_dir}/telemetry_data20250417_104459.json",
-            expected=1,
-            description="Cafe misinformation injection"
-        ),
-
-        # PARS Attack
-        TestCase(
-            name="Benign_PARS",
-            log_path=f"{base_dir}/telemetry_data20250410_164310.json",
-            expected=0,
-            description="Normal travel planning"
-        ),
-        TestCase(
-            name="Attack_PARS",
-            log_path=f"{base_dir}/telemetry_data20250417_193735.json",
-            expected=1,
-            description="PARS prompt injection attack"
-        ),
-
-        # Backdoor Attack
-        TestCase(
-            name="Benign_Backdoor",
-            log_path=f"{base_dir}/telemetry_data20250410_181319.json",
-            expected=0,
-            description="Normal travel planning"
-        ),
-        TestCase(
-            name="Attack_Backdoor",
-            log_path=f"{base_dir}/telemetry_data20250417_224826.json",
-            expected=1,
-            description="Agent backdoor compromise"
-        ),
-    ]
-
+    """Trip Planner (LangGraph): one benign log, three direct prompt injection (DPI) logs"""
+    d = os.path.join(LOGS, "Trip_Planner_LangGraph")
     return ApplicationTest(
-        app_name="Trip Planner (CrewAI)",
-        config_path=config_path,
-        test_cases=test_cases,
-        description="Multi-agent travel planning with various attack vectors"
+        app_name="Trip Planner (LangGraph)",
+        config_path=os.path.join(CONFIGS, "TripPlanner_LangGraph_config_file.json"),
+        test_cases=trip_cases(d),
+        description="LangGraph multi-agent travel planning with several attack vectors",
     )
 
 
@@ -223,11 +208,24 @@ def main():
     # Add application test suites
     print("Setting up test suites...")
 
-    # PDF Scholar Supervisor (LangGraph)
-    tester.add_application(setup_supervisor_tests())
+    # Instagram Marketing (CrewAI)
+    tester.add_application(setup_instagram_tests())
+
+    # Trip Planner (LangGraph) - Multiple attack types
+    tester.add_application(setup_trip_planner_tests())
 
     # Trip Planner (CrewAI) - Multiple attack types
-    tester.add_application(setup_trip_planner_tests())
+    tester.add_application(setup_trip_planner_crewai_tests())
+
+    tester.add_application(simple_app(
+        "Game Builder (CrewAI)", "GameBuilder", "GameBuilder_config_file.json",
+        "benign_log_GameBuilder.json", "anomaly_log_GameBuilder.json", "CrewAI game builder"))
+    tester.add_application(simple_app(
+        "GenFIC Stories Generator (LangGraph)", "Genfic", "GenFIC_config_file.json",
+        "benign_log_Genfic.json", "anomaly_log_Genfic.json", "LangGraph story generator"))
+    tester.add_application(simple_app(
+        "Real Estate (CrewAI)", "RealEstate", "RealEstate_config_file.json",
+        "benign_log_RealEstate.json", "anomaly_log_RealEstate.json", "CrewAI real estate"))
 
     # Run all tests
     tester.run_all()

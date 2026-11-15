@@ -33,7 +33,7 @@ Before running MAStitch, ensure you have:
 
 ```bash
 git clone <repository-url>
-cd mastitch
+cd <repository-folder>
 ```
 
 2. Install required dependencies:
@@ -42,7 +42,11 @@ cd mastitch
 pip install -r requirements.txt
 ```
 
-3. Copy `.env.example` to `.env` and fill in your API keys.
+3. Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env   # then fill in your keys
+```
 
 ## Environment Variables
 
@@ -67,12 +71,22 @@ MODEL=gpt-4.1-mini
 
 ### System Configuration File
 
-Each target MAS needs a JSON config describing expected agents, tools, and workflows. Bundled examples:
+Before running analysis, you need a system configuration file that describes your expected Multi-Agent System behavior.
+This file helps MAStitch distinguish normal operations from anomalies.
+Example configurations are provided in `configuration_files/`, with matching benign/anomaly logs in `example_logs/`:
 
-| Application | Config |
-|-------------|--------|
-| Instagram marketing (CrewAI) | [`configuration_files/Instagram_config_file.json`](./configuration_files/Instagram_config_file.json) |
-| Trip planner (LangGraph) | [`configuration_files/TripPlanner_LangGraph_config_file.json`](./configuration_files/TripPlanner_LangGraph_config_file.json) |
+| Application | Framework | Config | Logs |
+|---|---|---|---|
+| Instagram Marketing | CrewAI | `Instagram_config_file.json` | `example_logs/Instagram_CrewAI/` |
+| Trip Planner | LangGraph | `TripPlanner_LangGraph_config_file.json` | `example_logs/Trip_Planner_LangGraph/` |
+| Trip Planner | CrewAI | `TripPlanner_config_file.json` | `example_logs/Trip_Planner_CrewAI/` |
+| Game Builder | CrewAI | `GameBuilder_config_file.json` | `example_logs/GameBuilder/` |
+| GenFIC Stories Generator | LangGraph | `GenFIC_config_file.json` | `example_logs/Genfic/` |
+| Real Estate | CrewAI | `RealEstate_config_file.json` | `example_logs/RealEstate/` |
+
+Log files are named `benign_log_*` (expected result: no alert) or `anomaly_log_*` (expected result: alert). Each Trip Planner folder contains one benign log and three anomaly logs, one per attack scenario: `DPI_Misinformation`, `DPI_Backdoor` and `DPI_Exhaustion`.
+
+Run `python main.py` to evaluate all of them (note: each log triggers LLM calls).
 
 ### Tunable Thresholds
 
@@ -81,11 +95,12 @@ You can adjust monitoring sensitivity in `MAStitch_config.py`:
 ```python
 VALIDITY_ALERT_THRESHOLD: float = 75.0  # Chunk validity score threshold
 CONFIDENCE_ALERT_THRESHOLD: float = 70.0  # Global confidence threshold
+ESCALATING_RISK_SCORE: float = 45.0  # Chunk score above which a chunk is flagged as escalating risk in the GAA memory
 ```
 
 ### Log File Format
 
-MAStitch expects logs in a standardized JSON format from the **LumiMAS monitoring layer**. The system creates analysis
+MAStitch expects logs in a standardized JSON format from the **LumiMAS monitoring layer** ([arXiv:2508.12412](https://arxiv.org/abs/2508.12412)). The system creates analysis
 chunks based on agent execution boundaries:
 
 **Required events for chunking:**
@@ -95,26 +110,27 @@ chunks based on agent execution boundaries:
 
 ## Usage
 
-### Run bundled examples
-
-Copy `.env.example` to `.env`, add your API keys, then from the repo root:
+### Basic Usage
 
 ```python
 from MAStitch_detection import analyze_log_file
 
-# --- Instagram (CrewAI) ---
-config_ig = "configuration_files/Instagram_config_file.json"
-print(analyze_log_file("example_logs/Instegram_CrewAI/benign_log_Instegram", config_ig))       # 0 = benign
-print(analyze_log_file("example_logs/Instegram_CrewAI/anomaly_log_IPI", config_ig))            # 1 = anomaly
+# Path to your execution log file (JSON format)
+log_path = "/path/to/your/telemetry_log.json"
 
-# --- Trip planner (LangGraph) ---
-config_trip = "configuration_files/TripPlanner_LangGraph_config_file.json"
-print(analyze_log_file("example_logs/Trip_Planner_LangGraph/benign_log_Trip", config_trip))
-print(analyze_log_file("example_logs/Trip_Planner_LangGraph/anomaly_log_DPI_Misinformation", config_trip))
-# Other anomaly logs: anomaly_log_DPI_Backdoor, anomaly_log_DPI_Exhaustion
+# Path to your system configuration file
+config_path = "/path/to/your/system_config.json"
+
+# Run analysis. Returns a tuple:
+# (alert_raised, final_decision, seconds, token_usage, log_tokens)
+# Alert details are written to ALERT_<log name>.txt in output_dir (default: ./alerts)
+alert, *_ = analyze_log_file(log_path, config_path)
+
+if alert:
+    print("⚠️ SECURITY ALERT: Potential threat detected!")
+else:
+    print("✓ System operating normally")
 ```
-
-Returns **`0`** (benign) or **`1`** (anomaly). Prints progress and metrics to the console; on alert, writes `output/ALERT_<log_filename>.txt`. Each run uses OpenAI and Serper (costs apply).
 
 ## How It Works
 
@@ -126,8 +142,19 @@ Returns **`0`** (benign) or **`1`** (anomaly). Prints progress and metrics to th
     - Configuration deviations
     - Unauthorized access
     - Data integrity issues
-4. **Global Decision**: GAA orchestrator tracks patterns across chunks and triggers alerts when:
+4. **Global Decision**: GAA orchestrator evaluates the chunks in log order and tracks patterns across them and triggers alerts when:
     - Any chunk scores ≥ validity threshold (default: 75)
     - Global confidence ≥ confidence threshold (default: 70)
-5. **Alert Response**: Returns `1` if a threat is detected, `0` otherwise; alert details are written under `output/` (console output includes chunk scores and reasoning)
+5. **Alert Response**: `analyze_log_file` returns `True` as its first value if a threat was detected, `False` if benign
 
+## Output
+
+The method provides:
+
+- **Chunk Evaluations**: Validity scores and detected issues per chunk
+- **Global Decision**: Overall confidence score and alert status
+- **Detailed Reasoning**: Explanations for scores and decisions
+
+## Citation
+
+If you use MAStitch, please cite the paper: <https://dl.acm.org/doi/10.65109/BMJZ4532>

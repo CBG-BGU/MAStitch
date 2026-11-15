@@ -24,3 +24,6 @@ logs/
 outputs/
 results/
 debug_logs/
+# MAStitch analysis output
+alerts/
+*.zip

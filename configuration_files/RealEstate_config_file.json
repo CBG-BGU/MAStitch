@@ -1,0 +1,189 @@
+{
+  "system_name": "Real Estate Application",
+  "framework": "crewai",
+  "summary": {
+    "num_agents": 3,
+    "num_tasks": 3,
+    "num_crews": 1,
+    "num_mappings": 0,
+    "tools_defined": 3,
+    "tools_imported": 1,
+    "tools_mcp": 0
+  },
+  "agents": {
+    "advisor": {
+      "type": "Agent",
+      "source": "method_resolution",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Homeowner Advisor",
+      "goal": "Translate technical inspection findings into clear, actionable advice for homeowners",
+      "backstory": "You excel at explaining complex property issues to non-technical people.\n                You can prioritize information and focus on what matters most to homeowners.\n                Your advice is practical, balanced, and easy to understand even for first-time\n                home buyers. You avoid alarming people unnecessarily while making sure they\n                understand genuinely important issues. You will receive both the detailed property\n                analysis and repair estimates, and should use these to create a comprehensive but\n                easy-to-understand summary for the homeowner. No need to search for additional\n                information - focus on translating the technical details you've received into\n                clear, actionable advice.",
+      "tools": [],
+      "verbose": true
+    },
+    "analyst": {
+      "type": "Agent",
+      "source": "method_resolution",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Property Analysis Expert",
+      "tools": [
+        "Search PDF"
+      ],
+      "verbose": true
+    },
+    "estimator": {
+      "type": "Agent",
+      "source": "method_resolution",
+      "allow_delegation": true,
+      "allow_code_execution": false,
+      "multimodal": false,
+      "role": "Repair Estimator",
+      "goal": "Estimate repair costs and prioritize issues based on urgency and importance",
+      "tools": [],
+      "verbose": true
+    }
+  },
+  "tasks": {
+    "analysis_task": {
+      "type": "Task",
+      "source": "method_resolution",
+      "description": "\n                Analyze the property inspection PDF for information about {…}\n                \n                Your analysis should be thorough and detailed:\n                1. Search the document for ALL relevant information related to {…}\n                2. Identify what issues exist in this area\n                3. Explain the severity of each issue\n                4. Note any potential safety concerns\n                5. Identify any code violations mentioned\n                \n                Be comprehensive in your search - make sure you've found all mentions of \n                this topic throughout the document. Include page numbers when referencing \n                specific findings.\n                \n                IMPORTANT: When using the PDF search tool:\n                - Use various related search terms, not just the exact query\n                - For example, if searching about \"roof\", also try \"roofing\", \"leaks\", etc.\n                - If one search term doesn't yield results, try different terms\n                - Keep your search terms simple and specific\n                - Do not include quotes, special formatting, or complex structures in search terms\n                \n                Your analysis will be passed directly to the Repair Estimator agent, so make\n                sure it contains all the information they would need to estimate costs and \n                prioritize repairs.\n            ",
+      "agent": "analyst",
+      "expected_output": "A comprehensive analysis of the requested area of focus,\n                including all issues found, their severity, safety concerns, code violations,\n                and page references. The analysis should be detailed and thorough."
+    },
+    "estimate_task": {
+      "type": "Task",
+      "source": "method_resolution",
+      "description": "\n                Based on the following property analysis about {…}, estimate repair costs and prioritize issues:\n                \n                PROPERTY ANALYSIS:\n                {rs(DEBUG_LOG_DI}\n                \n                Your task:\n                1. For each issue identified in the analysis, estimate a rough cost range for repairs\n                2. Categorize issues by urgency:\n                   - Immediate safety concerns that need immediate attention\n                   - Important issues that should be addressed soon (3-6 months)\n                   - Minor issues that can wait but should be monitored\n                3. Identify which repairs are likely to require professional contractors versus DIY solutions\n                4. Note if any issues might impact insurance, resale value, or financing\n                \n                IMPORTANT CALCULATION TIPS:\n                - When using the calculator tool, use simple expressions (e.g., \"200*7\" or \"5000/2*10\")\n                - If a calculation fails, try breaking it into simpler parts\n                - Avoid using the same exact expression repeatedly if it fails\n                - Focus on creating realistic cost ranges rather than exact figures\n                \n                Make your estimates realistic based on typical contractor rates. When uncertain about costs,\n                provide ranges rather than specific numbers.\n                \n                You do not need to search the PDF document directly - all the information you need is in the\n                property analysis provided above.\n            ",
+      "agent": "estimator",
+      "expected_output": "A detailed breakdown of repair estimates organized by urgency,\n                with cost ranges, professional versus DIY recommendations, and notes about\n                insurance/resale/financing impacts."
+    },
+    "summary_task": {
+      "type": "Task",
+      "source": "method_resolution",
+      "description": "\n                Create a clear, concise summary of the {le=sy} findings for a homeowner who has limited technical knowledge.\n                \n                Use the following detailed analysis and repair estimates to create your summary:\n                \n                PROPERTY ANALYSIS:\n                {ment including }\n                \n                REPAIR ESTIMATES:\n                {s, **kwargs):\n}\n                \n                Your summary should:\n                1. Use plain, non-technical language to explain the issues\n                2. Focus on what the homeowner needs to know and do\n                3. Explain the \"why\" behind important recommendations\n                4. Provide a clear list of next steps in order of priority\n                5. Mention any other critical issues found in the report, even if not directly related to {…}\n                \n                Your summary should be easy to understand, actionable, and focused on the most important points.\n                Avoid alarm about minor issues, but be honest and clear about serious problems.\n                \n                You do not need to search the PDF document directly - all the information you need is in the\n                property analysis and repair estimates provided above.\n            ",
+      "agent": "advisor",
+      "expected_output": "A homeowner-friendly summary that explains the findings in plain language,\n                gives clear next steps in priority order, and mentions any other critical issues.\n                The summary should be concise but complete, focusing on what matters most."
+    }
+  },
+  "tools": {
+    "defined": {
+      "SearchTools.search_instagram": {
+        "type": "decorated_method",
+        "display_name": "Search instagram",
+        "source_code": "def search_instagram(query):\n    \"\"\"Useful to search for instagram post about a given topic and return relevant\n    results.\"\"\"\n    query = f\"site:instagram.com {query}\"\n    return SearchTools.search(query)",
+        "description": "Useful to search for instagram post about a given topic and return relevant\n    results.",
+        "class": "SearchTools",
+        "method": "search_instagram"
+      },
+      "SearchTools.search_internet": {
+        "type": "decorated_method",
+        "display_name": "Search internet",
+        "source_code": "def search_internet(query):\n    \"\"\"Useful to search the internet about a given topic and return relevant\n    results.\"\"\"\n    return SearchTools.search(query)",
+        "description": "Useful to search the internet about a given topic and return relevant\n    results.",
+        "class": "SearchTools",
+        "method": "search_internet"
+      },
+      "Search PDF": {
+        "type": "langchain_tool",
+        "display_name": "Search PDF",
+        "source_code": null,
+        "description": "Search for information in the property inspection PDF. Args: query (string or dict-like); Returns: relevant passages.",
+        "class": "Tool",
+        "method": "search_pdf",
+        "arguments": {
+          "query": {
+            "description": "Search query or a dict containing a 'query'/'description' field.",
+            "type": "str|dict",
+            "required": true
+          }
+        }
+      }
+    },
+    "imported": {
+      "crewai_tools.PDFSearchTool": {
+        "type": "tool_class",
+        "display_name": "PDF Search Tool",
+        "source_code": null,
+        "description": "Low-level tool that searches within a PDF document; used internally by the 'Search PDF' LangChain tool.",
+        "class": "crewai_tools",
+        "method": "PDFSearchTool",
+        "arguments": {
+          "pdf": {
+            "description": "Path to the PDF file to analyze.",
+            "type": "str",
+            "required": true
+          },
+          "config": {
+            "description": "Optional configuration dict (e.g., llm and embedder settings).",
+            "type": "dict",
+            "required": false
+          }
+        }
+      }
+    },
+    "mcp": {}
+  },
+  "crews": {
+    "realestate_crew": {
+      "crew_name": "Real Estate Property Report Crew",
+      "agents": [
+        {
+          "agent_number": 1,
+          "role": "Property Analysis Expert",
+          "goal": "Thoroughly analyze property inspection reports and identify critical issues that require attention",
+          "backstory": "You are a property inspection expert with 20 years of experience reviewing inspection reports. You can quickly identify the most important issues in a property and explain them in plain language. You focus on structural issues, safety concerns, and expensive repair items while avoiding minor cosmetic issues. Homeowners value your ability to translate technical jargon into actionable insights. Your analysis will be used by the Repair Estimator and Homeowner Advisor, so be thorough and detailed. When searching the PDF, vary search terms (e.g., roof, roofing, leaks, shingles) to ensure comprehensive coverage.",
+          "tools": [
+            "Search PDF"
+          ],
+          "verbose": true
+        },
+        {
+          "agent_number": 2,
+          "role": "Repair Estimator",
+          "goal": "Estimate repair costs and prioritize issues based on urgency and importance",
+          "backstory": "You are an experienced contractor who has worked on thousands of properties. You assess severity and estimate repair costs, distinguishing immediate safety issues from items that can wait. You do not search the PDF yourself; you rely on the Analysis Expert’s output. Avoid repeating the same calculation; break complex calculations into smaller steps if errors occur.",
+          "tools": [],
+          "verbose": true
+        },
+        {
+          "agent_number": 3,
+          "role": "Homeowner Advisor",
+          "goal": "Translate technical inspection findings into clear, actionable advice for homeowners",
+          "backstory": "You excel at explaining complex property issues to non-technical people, prioritizing what matters most. Your advice is practical, balanced, and easy to understand. You use the analysis and repair estimates to produce a concise, homeowner-friendly summary. No additional search is needed.",
+          "tools": [],
+          "verbose": true
+        }
+      ],
+      "tasks": [
+        {
+          "task_number": 1,
+          "description": "Analyze the property inspection PDF for the requested focus area. Search comprehensively across the document, using varied terms (e.g., for roofing: roof, roofing, leaks, shingles). Identify all relevant issues, assess severity and safety concerns, and cite page references where possible.",
+          "expected_output": "A comprehensive analysis covering issues found, severity, safety concerns, code violations if any, and page references.",
+          "agent_role": "Property Analysis Expert",
+          "agent_number": 1
+        },
+        {
+          "task_number": 2,
+          "description": "Using the Property Analysis, estimate cost ranges and prioritize repairs by urgency (immediate safety, soon 3–6 months, monitor/minor). Indicate professional vs. DIY suitability and note potential impacts on insurance, resale, or financing.",
+          "expected_output": "A prioritized list of repair items with realistic cost ranges, pro vs. DIY recommendations, and relevant risk/impact notes.",
+          "agent_role": "Repair Estimator",
+          "agent_number": 2
+        },
+        {
+          "task_number": 3,
+          "description": "Produce a clear homeowner-friendly summary based on the analysis and estimates. Focus on what to do and why, list next steps in priority order, and mention any other critical issues discovered.",
+          "expected_output": "A concise, plain-language summary with prioritized next steps and key justifications, suitable for a non-technical homeowner.",
+          "agent_role": "Homeowner Advisor",
+          "agent_number": 3
+        }
+      ],
+      "process": "Process.sequential",
+      "verbose": true
+    }
+  }
+}

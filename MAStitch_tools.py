@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from crewai.tools import BaseTool
+from pydantic import PrivateAttr
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,8 +12,11 @@ class InternetSearchTool(BaseTool):
     name: str = "Internet Search Tool"
     description: str = "Search the internet for information about security threats, attack patterns, or suspicious activities utilize the user input"
 
+    _usage_count: int = PrivateAttr(default=0)  # number of searches performed
+
     def _run(self, query: str) -> str:
         """Search the internet and return results"""
+        self._usage_count += 1
         try:
             # Use environment variable for API key
             if 'SERPER_API_KEY' not in os.environ:
@@ -32,7 +36,7 @@ class InternetSearchTool(BaseTool):
             results = response.json().get('organic', [])
             search_results = []
 
-            for result in results[:2]:  # Limit to 3 results to reduce token usage
+            for result in results[:2]:  # Limit to 2 results to reduce token usage
                 try:
                     search_results.append('\n'.join([
                         f"Title: {result['title']}",
